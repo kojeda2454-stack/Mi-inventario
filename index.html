@@ -272,6 +272,18 @@
 
   .section-label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin: 14px 0 8px; }
 
+  /* CART */
+  .cart-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+  }
+  .cart-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .cart-item-info { flex: 1; min-width: 0; }
+  .cart-item-name { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cart-item-detail { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .cart-item-price { font-weight: 800; font-size: 15px; color: var(--success); white-space: nowrap; }
+  .cart-remove { background: none; border: none; font-size: 18px; cursor: pointer; color: var(--danger); padding: 4px; flex-shrink: 0; }
+
   /* LOGIN */
   #loginScreen {
     position: fixed; inset: 0; z-index: 9999;
@@ -481,47 +493,52 @@
 </div>
 
 <div id="page-venta" class="page">
-  <div class="card">
-    <div class="card-title">🛒 Registrar venta</div>
 
+  <!-- PASO 1: Agregar productos al carrito -->
+  <div class="card">
+    <div class="card-title">➕ Agregar producto</div>
     <div class="form-group">
       <label>Artículo *</label>
       <select id="saleProduct" onchange="onProductSelected()">
         <option value="">— Seleccionar artículo —</option>
       </select>
     </div>
-
     <div class="row-2">
       <div class="form-group">
         <label>Cantidad *</label>
-        <input type="number" id="saleQty" min="1" value="1" oninput="updateTotals()">
+        <input type="number" id="saleQty" min="1" value="1" oninput="updateItemPreview()">
       </div>
       <div class="form-group">
-        <label>Precio venta *</label>
-        <input type="number" id="salePrice" min="0" placeholder="0" oninput="updateTotals()">
+        <label>Precio unitario *</label>
+        <input type="number" id="salePrice" min="0" placeholder="0" oninput="updateItemPreview()">
       </div>
     </div>
+    <div id="itemPreview" style="display:none;background:#eff6ff;border-radius:8px;padding:10px;margin-bottom:12px;font-size:13px;color:var(--primary);font-weight:600"></div>
+    <button class="btn btn-primary" onclick="addToCart()">+ Agregar al carrito</button>
+  </div>
 
-    <div id="saleCalc" style="display:none;margin-bottom:14px">
-      <div class="row-2">
-        <div class="ganancia-box" style="margin-bottom:0">
-          <div class="ganancia-label">Total venta</div>
-          <div class="ganancia-value" id="saleTotalBox" style="font-size:20px;color:var(--primary)">$0</div>
-        </div>
-        <div class="ganancia-box" id="gananciaCont" style="margin-bottom:0">
-          <div class="ganancia-label">Ganancia</div>
-          <div class="ganancia-value" id="saleGanancia">$0</div>
-        </div>
-      </div>
-    </div>
-
+  <!-- CARRITO -->
+  <div class="card" id="cartCard" style="display:none">
+    <div class="card-title">🛒 Carrito</div>
+    <div id="cartList"></div>
     <div class="divider"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <span style="font-size:13px;color:var(--muted);font-weight:600">Total venta</span>
+      <span style="font-size:22px;font-weight:800;color:var(--primary)" id="cartTotal">$0</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:13px;color:var(--muted);font-weight:600">Ganancia estimada</span>
+      <span style="font-size:16px;font-weight:700;color:var(--success)" id="cartGanancia">$0</span>
+    </div>
+  </div>
 
+  <!-- PASO 2: Datos de la venta -->
+  <div class="card">
+    <div class="card-title">📋 Datos de la venta</div>
     <div class="form-group">
       <label>Cliente / Comprador *</label>
       <input type="text" id="saleBuyer" placeholder="Nombre del comprador">
     </div>
-
     <div class="form-group">
       <label>Método de pago *</label>
       <select id="salePayment">
@@ -534,20 +551,16 @@
         <option value="otro">🔹 Otro</option>
       </select>
     </div>
-
     <div class="form-group">
       <label>Fecha *</label>
       <input type="date" id="saleDate">
     </div>
-
     <div class="divider"></div>
     <div class="section-label">📄 Guía de despacho</div>
-
     <div class="form-group">
       <label>N° Guía de despacho</label>
       <input type="text" id="guideNum" placeholder="Ej: GD-00123">
     </div>
-
     <div class="form-group">
       <label>Adjuntar guía (PDF / imagen)</label>
       <div class="file-upload">
@@ -557,12 +570,10 @@
         <div class="file-name" id="fileName"></div>
       </div>
     </div>
-
     <div class="form-group">
       <label>Notas</label>
       <textarea id="saleNotes" placeholder="Dirección, observaciones..."></textarea>
     </div>
-
     <button class="btn btn-success" onclick="registerSale()">✅ Registrar venta</button>
   </div>
 </div>
@@ -706,8 +717,8 @@
 //  AUTH
 // =========================================================
 const USERS = {
-  'kevin morales': 'MORALES.22',
-  'joel aedo':     'AEDO.22'
+  'kevinmorales': 'MORALES.22',
+  'joelaedo':     'AEDO.22'
 };
 
 function doLogin() {
@@ -838,10 +849,10 @@ function updateStats() {
   const prods = Object.values(products);
   const saleArr = Object.values(sales);
 
-  const totalStock = prods.reduce((s,p) => s + (p.stock||0), 0);
-  const lowStock = prods.filter(p => (p.stock||0) > 0 && (p.stock||0) <= 5).length;
-  const valorVenta = prods.reduce((s,p) => s + (p.stock||0)*(p.price||0), 0);
-  const valorCosto = prods.reduce((s,p) => s + (p.stock||0)*(p.costo||0), 0);
+  const totalStock = prods.reduce((s,p) => s + Math.max(0, p.stock||0), 0);
+  const lowStock = prods.filter(p => Math.max(0,p.stock||0) > 0 && Math.max(0,p.stock||0) <= 5).length;
+  const valorVenta = prods.reduce((s,p) => s + Math.max(0,p.stock||0)*(p.price||0), 0);
+  const valorCosto = prods.reduce((s,p) => s + Math.max(0,p.stock||0)*(p.costo||0), 0);
 
   document.getElementById('statProductos').textContent = prods.length;
   document.getElementById('statLow').textContent = lowStock;
@@ -902,7 +913,7 @@ function renderInventory() {
         ${marginHtml}
       </div>
       <div class="product-right ${cls}">
-        <div class="stock-num">${p.stock||0}</div>
+        <div class="stock-num">${Math.max(0, p.stock||0)}</div>
         <div class="stock-label">unid.</div>
       </div>
     </div>`;
@@ -991,8 +1002,10 @@ function deleteProductModal() {
 }
 
 // =========================================================
-//  SALE FORM
+//  SALE FORM — CARRITO MULTI-PRODUCTO
 // =========================================================
+let cart = []; // [{productId, productName, qty, price, costo}]
+
 function loadSaleProducts() {
   const sel = document.getElementById('saleProduct');
   const cur = sel.value;
@@ -1000,11 +1013,19 @@ function loadSaleProducts() {
   Object.values(products).forEach(p => {
     const opt = document.createElement('option');
     opt.value = p.id;
-    opt.textContent = p.name + ' (stock: ' + (p.stock||0) + ')';
-    if (!p.stock) opt.textContent += ' ⚠️';
+    const stockLeft = getAvailableStock(p.id);
+    opt.textContent = p.name + ' (stock: ' + stockLeft + ')';
+    if (stockLeft <= 0) { opt.textContent += ' ⚠️'; opt.style.color = '#dc2626'; }
     sel.appendChild(opt);
   });
   if (cur) sel.value = cur;
+}
+
+function getAvailableStock(productId) {
+  const p = products[productId];
+  if (!p) return 0;
+  const inCart = cart.filter(i => i.productId === productId).reduce((s,i) => s + i.qty, 0);
+  return Math.max(0, (p.stock || 0) - inCart);
 }
 
 function setTodayDate() {
@@ -1016,23 +1037,81 @@ function onProductSelected() {
   const id = document.getElementById('saleProduct').value;
   const p = products[id];
   if (p && p.price) document.getElementById('salePrice').value = p.price;
-  updateTotals();
+  updateItemPreview();
 }
 
-function updateTotals() {
+function updateItemPreview() {
   const id    = document.getElementById('saleProduct').value;
-  const p     = products[id];
   const qty   = parseFloat(document.getElementById('saleQty').value) || 0;
   const price = parseFloat(document.getElementById('salePrice').value) || 0;
-  const total = qty * price;
-  const costo = p ? (p.costo || 0) * qty : 0;
-  const gan   = total - costo;
+  const preview = document.getElementById('itemPreview');
+  if (id && qty > 0 && price > 0) {
+    const p = products[id];
+    const total = qty * price;
+    preview.style.display = 'block';
+    preview.textContent = `${p ? p.name : ''} × ${qty} = $${fmt(total)}`;
+  } else {
+    preview.style.display = 'none';
+  }
+}
 
-  document.getElementById('saleTotalBox').textContent = '$' + fmt(total);
-  document.getElementById('saleGanancia').textContent = '$' + fmt(Math.abs(gan));
-  document.getElementById('saleGanancia').className = 'ganancia-value' + (gan < 0 ? ' neg' : '');
-  document.getElementById('gananciaCont').className  = 'ganancia-box' + (gan < 0 ? ' ganancia-neg' : '') + ' ' + 'margin-bottom:0';
-  document.getElementById('saleCalc').style.display  = qty > 0 && price > 0 ? 'block' : 'none';
+function addToCart() {
+  const id    = document.getElementById('saleProduct').value;
+  const qty   = parseInt(document.getElementById('saleQty').value);
+  const price = parseFloat(document.getElementById('salePrice').value);
+
+  if (!id) return showToast('⚠️ Selecciona un artículo');
+  if (!qty || qty < 1) return showToast('⚠️ Cantidad inválida');
+  if (!price || price <= 0) return showToast('⚠️ Ingresa el precio');
+
+  const p = products[id];
+  if (!p) return showToast('⚠️ Artículo no encontrado');
+  if (getAvailableStock(id) < qty) return showToast(`⚠️ Stock insuficiente (disponible: ${getAvailableStock(id)})`);
+
+  cart.push({ productId: id, productName: p.name, qty, price, costo: p.costo || 0 });
+
+  // Reset selector
+  document.getElementById('saleProduct').value = '';
+  document.getElementById('saleQty').value = 1;
+  document.getElementById('salePrice').value = '';
+  document.getElementById('itemPreview').style.display = 'none';
+
+  renderCart();
+  loadSaleProducts(); // refresh available stock
+  showToast('✅ Producto agregado al carrito');
+}
+
+function removeFromCart(index) {
+  cart.splice(index, 1);
+  renderCart();
+  loadSaleProducts();
+}
+
+function renderCart() {
+  const card = document.getElementById('cartCard');
+  const list = document.getElementById('cartList');
+
+  if (!cart.length) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+
+  list.innerHTML = cart.map((item, i) => `
+    <div class="cart-item">
+      <div class="cart-item-info">
+        <div class="cart-item-name">${item.productName}</div>
+        <div class="cart-item-detail">${item.qty} unid. × $${fmt(item.price)}</div>
+      </div>
+      <div class="cart-item-price">$${fmt(item.qty * item.price)}</div>
+      <button class="cart-remove" onclick="removeFromCart(${i})">✕</button>
+    </div>
+  `).join('');
+
+  const total    = cart.reduce((s,i) => s + i.qty * i.price, 0);
+  const costoTot = cart.reduce((s,i) => s + i.qty * i.costo, 0);
+  const ganancia = total - costoTot;
+
+  document.getElementById('cartTotal').textContent    = '$' + fmt(total);
+  document.getElementById('cartGanancia').textContent = (ganancia >= 0 ? '+' : '-') + '$' + fmt(Math.abs(ganancia));
+  document.getElementById('cartGanancia').style.color = ganancia >= 0 ? 'var(--success)' : 'var(--danger)';
 }
 
 function handleFile(e) {
@@ -1046,34 +1125,28 @@ function handleFile(e) {
 }
 
 function registerSale() {
-  const productId = document.getElementById('saleProduct').value;
-  const qty       = parseInt(document.getElementById('saleQty').value);
-  const price     = parseFloat(document.getElementById('salePrice').value);
-  const buyer     = document.getElementById('saleBuyer').value.trim();
-  const payment   = document.getElementById('salePayment').value;
-  const date      = document.getElementById('saleDate').value;
+  if (!cart.length) return showToast('⚠️ Agrega al menos un producto al carrito');
 
-  if (!productId) return showToast('⚠️ Selecciona un artículo');
-  if (!qty || qty < 1) return showToast('⚠️ Cantidad inválida');
-  if (!price || price <= 0) return showToast('⚠️ Ingresa el precio');
-  if (!buyer) return showToast('⚠️ Ingresa el nombre del comprador');
+  const buyer   = document.getElementById('saleBuyer').value.trim();
+  const payment = document.getElementById('salePayment').value;
+  const date    = document.getElementById('saleDate').value;
+
+  if (!buyer)   return showToast('⚠️ Ingresa el nombre del comprador');
   if (!payment) return showToast('⚠️ Selecciona método de pago');
-  if (!date) return showToast('⚠️ Selecciona la fecha');
+  if (!date)    return showToast('⚠️ Selecciona la fecha');
 
-  const p = products[productId];
-  if (!p) return showToast('⚠️ Artículo no encontrado');
-  if ((p.stock || 0) < qty) return showToast(`⚠️ Stock insuficiente (disponible: ${p.stock||0})`);
-
-  const costoUnit  = p.costo || 0;
-  const costoTotal = costoUnit * qty;
-  const total      = qty * price;
+  const total      = cart.reduce((s,i) => s + i.qty * i.price, 0);
+  const costoTotal = cart.reduce((s,i) => s + i.qty * i.costo, 0);
   const ganancia   = total - costoTotal;
   const margen     = total > 0 ? Math.round((ganancia / total) * 100) : 0;
 
   const saleId = 's_' + Date.now();
   const sale = {
-    id: saleId, productId, productName: p.name,
-    qty, price, total, costoUnit, costoTotal, ganancia, margen,
+    id: saleId,
+    items: cart.map(i => ({ productId: i.productId, productName: i.productName, qty: i.qty, price: i.price, costo: i.costo })),
+    // Para compatibilidad con historial (primer producto como nombre)
+    productName: cart.length === 1 ? cart[0].productName : cart.map(i => i.productName).join(', '),
+    total, costoTotal, ganancia, margen,
     buyer, payment, date,
     guideNum:  document.getElementById('guideNum').value.trim(),
     guideFile: guideFileData,
@@ -1081,14 +1154,18 @@ function registerSale() {
     createdAt: new Date().toISOString()
   };
 
-  // Update stock and write sale atomically
+  // Descontar stock de cada producto atomicamente
   const updates = {};
-  updates['products/' + productId + '/stock'] = (p.stock || 0) - qty;
+  cart.forEach(item => {
+    const p = products[item.productId];
+    if (p) updates['products/' + item.productId + '/stock'] = Math.max(0, (p.stock || 0) - item.qty);
+  });
   updates['sales/' + saleId] = sale;
 
   db.ref().update(updates)
     .then(() => {
-      // Reset form
+      cart = [];
+      renderCart();
       document.getElementById('saleProduct').value  = '';
       document.getElementById('saleQty').value      = 1;
       document.getElementById('salePrice').value    = '';
@@ -1097,8 +1174,8 @@ function registerSale() {
       document.getElementById('guideNum').value     = '';
       document.getElementById('saleNotes').value    = '';
       document.getElementById('fileName').textContent = '';
-      document.getElementById('guideFile').value   = '';
-      document.getElementById('saleCalc').style.display = 'none';
+      document.getElementById('guideFile').value    = '';
+      document.getElementById('itemPreview').style.display = 'none';
       guideFileData = null;
       showToast('✅ Venta registrada');
     })
@@ -1175,6 +1252,18 @@ function openSaleDetail(id) {
     </div>`;
   }
 
+  // Build items list (support both old single-product and new multi-product format)
+  const items = s.items || [{ productName: s.productName, qty: s.qty, price: s.price, costo: s.costoUnit || 0 }];
+  const itemsHtml = items.map(it => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
+      <div>
+        <div style="font-weight:700;font-size:14px">${it.productName}</div>
+        <div style="font-size:12px;color:var(--muted)">${it.qty} unid. × $${fmt(it.price)}</div>
+      </div>
+      <div style="font-weight:800;color:var(--success)">$${fmt(it.qty * it.price)}</div>
+    </div>
+  `).join('');
+
   document.getElementById('saleDetailContent').innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
       <div style="font-size:28px;font-weight:800;color:var(--success)">$${fmt(s.total)}</div>
@@ -1182,10 +1271,9 @@ function openSaleDetail(id) {
     </div>
     <div style="display:grid;gap:10px;font-size:14px">
       <div><span style="color:var(--muted)">👤 Cliente</span><br><strong>${s.buyer}</strong></div>
-      <div><span style="color:var(--muted)">📦 Artículo</span><br><strong>${s.productName}</strong></div>
-      <div class="row-2">
-        <div><span style="color:var(--muted)">Cantidad</span><br><strong>${s.qty} unid.</strong></div>
-        <div><span style="color:var(--muted)">Precio unit.</span><br><strong>$${fmt(s.price)}</strong></div>
+      <div>
+        <span style="color:var(--muted)">📦 Productos</span>
+        <div style="margin-top:6px">${itemsHtml}</div>
       </div>
       <div><span style="color:var(--muted)">💳 Pago</span><br><strong>${payLabel(s.payment)}</strong></div>
       ${s.guideNum ? `<div><span style="color:var(--muted)">📄 N° Guía</span><br><strong>${s.guideNum}</strong></div>` : ''}
